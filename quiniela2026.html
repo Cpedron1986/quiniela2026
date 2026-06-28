@@ -1376,16 +1376,30 @@ function getTeamForKOSlot(fromSlotId, koWinners, classified){
 var koSaveTimers={};
 function onKOInput(el){
   var slotId=el.dataset.slot;
-  // Si cambiaron los inputs de score, verificar si hay empate para mostrar penales
+  // Mostrar/ocultar penales en tiempo real al detectar empate
   if(el.dataset.side==='h'||el.dataset.side==='a'){
     var hEl=document.getElementById('koh-'+slotId);
     var aEl=document.getElementById('koa-'+slotId);
     if(hEl&&aEl&&hEl.value!==''&&aEl.value!==''){
       var isDraw=parseInt(hEl.value)===parseInt(aEl.value);
-      // Re-renderizar solo si cambió el estado de empate
       var penRow=document.getElementById('ko-pen-row-'+slotId);
-      if(!penRow&&isDraw) renderKnockout(); // necesita penales, re-render
-      else if(penRow&&!isDraw) renderKnockout(); // no necesita penales, re-render
+      if(penRow){
+        penRow.style.display=isDraw?'flex':'none';
+      } else if(isDraw){
+        // Crear fila de penales dinámicamente
+        var scoreRow=hEl.closest('.score-row');
+        if(scoreRow){
+          var div=document.createElement('div');
+          div.id='ko-pen-row-'+slotId;
+          div.className='score-row';
+          div.style.marginTop='6px';
+          div.innerHTML='<span style="font-size:10px;color:var(--accent);font-weight:700;margin-right:6px">🥅 Penales:</span>'+
+            '<input type="number" min="0" max="20" class="score-input ko-input" data-slot="'+slotId+'" data-side="ph" id="koph-'+slotId+'" placeholder="0" style="width:52px" oninput="onKOInput(this)"/>'+
+            '<span class="score-dash">-</span>'+
+            '<input type="number" min="0" max="20" class="score-input ko-input" data-slot="'+slotId+'" data-side="pa" id="kopa-'+slotId+'" placeholder="0" style="width:52px" oninput="onKOInput(this)"/>';
+          scoreRow.parentNode.insertBefore(div,scoreRow.nextSibling);
+        }
+      }
     }
   }
   clearTimeout(koSaveTimers[slotId]);
@@ -1396,11 +1410,9 @@ function onKOInput(el){
 }
 async function saveKOScore(btn){
   var slotId=btn.dataset.slot,homeTeam=btn.dataset.home,awayTeam=btn.dataset.away;
-  // Verificar lock KO en BD
-  var allSlots=[].concat(R32_SLOTS,R16_SLOTS,QF_SLOTS,SF_SLOTS,FINAL_SLOTS);
-  var slotIdx=-1;for(var i=0;i<allSlots.length;i++){if(allSlots[i].id===slotId){slotIdx=i;break;}}
-  var koMid=8000+slotIdx+1;
-  if(manualLocks[koMid]&&!forceOpen[koMid]){
+  // Verificar lock KO en BD (usa match_id del KO_ID_MAP)
+  var koLockMid=KO_ID_MAP[slotId];
+  if(koLockMid&&bdLocks&&bdLocks[koLockMid]){
     showToast('Este partido ya está bloqueado pana 🔒','err');return;
   }
   var hEl=document.querySelector('.ko-input[data-slot="'+slotId+'"][data-side="h"]');
