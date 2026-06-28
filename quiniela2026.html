@@ -1616,6 +1616,16 @@ function checkPhaseDone(slotIds){
   return true;
 }
 
+var KO_ID_MAP={
+  R32_01:9001,R32_02:9002,R32_03:9003,R32_04:9004,R32_05:9005,R32_06:9006,
+  R32_07:9007,R32_08:9008,R32_09:9009,R32_10:9010,R32_11:9011,R32_12:9012,
+  R32_13:9013,R32_14:9014,R32_15:9015,R32_16:9016,
+  R16_01:9017,R16_02:9018,R16_03:9019,R16_04:9020,
+  R16_05:9021,R16_06:9022,R16_07:9023,R16_08:9024,
+  QF_01:9025,QF_02:9026,QF_03:9027,QF_04:9028,
+  SF_01:9029,SF_02:9030,"3RD":9031,FIN:9032
+};
+var KO_ID_REV={};for(var _ki in KO_ID_MAP) KO_ID_REV[KO_ID_MAP[_ki]]=_ki;
 function renderKOCard(slotId,homeTeam,awayTeam,winner,realWinner,pts,phase,label){
   var pred=winner||null;
   var res=realWinner||null;
@@ -1828,16 +1838,7 @@ function updateProgress(){
 
 // ── RESULTS ───────────────────────────────────────────────────────────────────
 // ── KO RESULTS (ADMIN) ────────────────────────────────────────────────────────
-var KO_ID_MAP={
-  R32_01:9001,R32_02:9002,R32_03:9003,R32_04:9004,R32_05:9005,R32_06:9006,
-  R32_07:9007,R32_08:9008,R32_09:9009,R32_10:9010,R32_11:9011,R32_12:9012,
-  R32_13:9013,R32_14:9014,R32_15:9015,R32_16:9016,
-  R16_01:9017,R16_02:9018,R16_03:9019,R16_04:9020,
-  R16_05:9021,R16_06:9022,R16_07:9023,R16_08:9024,
-  QF_01:9025,QF_02:9026,QF_03:9027,QF_04:9028,
-  SF_01:9029,SF_02:9030,"3RD":9031,FIN:9032
-};
-var KO_ID_REV={};for(var _ki in KO_ID_MAP) KO_ID_REV[KO_ID_MAP[_ki]]=_ki;
+
 function getKOSlots(fase){
   if(fase==='R32') return R32_SLOTS;if(fase==='R16') return R16_SLOTS;
   if(fase==='QF') return QF_SLOTS;if(fase==='SF') return SF_SLOTS;
