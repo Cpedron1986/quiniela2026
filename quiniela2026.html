@@ -1384,6 +1384,13 @@ function onKOInput(el){
 }
 async function saveKOScore(btn){
   var slotId=btn.dataset.slot,homeTeam=btn.dataset.home,awayTeam=btn.dataset.away;
+  // Verificar lock KO en BD
+  var allSlots=[].concat(R32_SLOTS,R16_SLOTS,QF_SLOTS,SF_SLOTS,FINAL_SLOTS);
+  var slotIdx=-1;for(var i=0;i<allSlots.length;i++){if(allSlots[i].id===slotId){slotIdx=i;break;}}
+  var koMid=8000+slotIdx+1;
+  if(manualLocks[koMid]&&!forceOpen[koMid]){
+    showToast('Este partido ya está bloqueado pana 🔒','err');return;
+  }
   var hEl=document.querySelector('.ko-input[data-slot="'+slotId+'"][data-side="h"]');
   var aEl=document.querySelector('.ko-input[data-slot="'+slotId+'"][data-side="a"]');
   if(!hEl||!aEl||hEl.value===''||aEl.value==='') return;
@@ -2086,6 +2093,43 @@ function renderAdminLockPanel(){
     }
     html+='</div>';
   }
+  // ── Fase Final ──
+  var allSlots=[].concat(R32_SLOTS,R16_SLOTS,QF_SLOTS,SF_SLOTS,FINAL_SLOTS);
+  var phaseNames={R32:'32avos de Final',R16:'16avos de Final',QF:'Cuartos de Final',SF:'Semifinales',FIN:'Final / 3er Lugar'};
+  var curPhase='';
+  for(var si=0;si<allSlots.length;si++){
+    var slot=allSlots[si];
+    var phase=getPhaseFromSlot(slot.id);
+    if(phase!==curPhase){
+      curPhase=phase;
+      html+='<div style="margin-bottom:10px;margin-top:14px"><div style="color:var(--accent);font-size:12px;font-weight:700;margin-bottom:6px">'+phaseNames[phase]+'</div>';
+    }
+    var koMid=8000+si+1; // match_id para lock de KO
+    var home=slot.home||(koResHome(slot));
+    var away=slot.away||(koResAway(slot));
+    var manLockKO=!!manualLocks[koMid];
+    var fOpenKO=!!forceOpen[koMid];
+    var stateHtmlKO='';
+    if(fOpenKO) stateHtmlKO='<span style="color:var(--green);font-size:11px;font-weight:700">🔓 Abierto</span>';
+    else if(manLockKO) stateHtmlKO='<span style="color:var(--red);font-size:11px;font-weight:700">🔒 Bloqueado</span>';
+    else stateHtmlKO='<span style="color:var(--green);font-size:11px">🔓 Abierto</span>';
+    var btnsKO='';
+    if(fOpenKO){
+      btnsKO='<button onclick="setLockState('+koMid+',0)" style="background:rgba(90,112,128,.2);border:1px solid var(--muted);color:var(--muted);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:11px">Quitar override</button>';
+      btnsKO+='<button onclick="setLockState('+koMid+',1)" style="background:rgba(255,61,107,.15);border:1px solid var(--red);color:var(--red);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:11px;margin-left:4px">🔒 Bloquear</button>';
+    } else if(manLockKO){
+      btnsKO='<button onclick="setLockState('+koMid+',0)" style="background:rgba(90,112,128,.2);border:1px solid var(--muted);color:var(--muted);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:11px">Quitar lock</button>';
+      btnsKO+='<button onclick="setLockState('+koMid+',2)" style="background:rgba(0,230,118,.1);border:1px solid var(--green);color:var(--green);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:11px;margin-left:4px">🔓 Abrir</button>';
+    } else {
+      btnsKO='<button onclick="setLockState('+koMid+',1)" style="background:rgba(255,61,107,.15);border:1px solid var(--red);color:var(--red);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:11px">🔒 Bloquear</button>';
+    }
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:6px;gap:8px;flex-wrap:wrap">'+
+      '<span style="font-size:12px;color:var(--text);flex:1">'+home+' vs '+away+'</span>'+
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+stateHtmlKO+btnsKO+'</div>'+
+    '</div>';
+  }
+  html+='</div>';
+
   var panel=document.getElementById('admin-lock-panel');
   if(panel) panel.innerHTML=html;
 }
