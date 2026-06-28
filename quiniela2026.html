@@ -1145,7 +1145,7 @@ async function initApp(){
     document.getElementById('btn-admin').style.display='flex';
   }
   await loadKOEnabled();
-  await Promise.all([loadMyPreds(),loadAllResults(),loadMyChamp(),loadCriteria(),loadGlobalResults(),loadMyKO(),loadAllKOResults(),loadManualLocks()]);
+  await Promise.all([loadMyPreds(),loadAllResults(),loadMyChamp(),loadCriteria(),loadGlobalResults(),loadMyKO(),loadAllKOResults(),loadManualLocks(),loadBDLocksKO()]);
   buildGrupoTabs();buildResGrupoTabs();populateChampSelect();startLockWatcher();
   renderMatches();renderResMatches();updateProgress();updateProfile();
   if(CU.username.toLowerCase()==='admin') loadAdminPanel();
@@ -1517,8 +1517,9 @@ function renderKnockout(){
     var homeTeam=slot.home; // equipos reales directos
     var awayTeam=slot.away;
     var winner=myKO[slot.id]||null;
-    var realWinner=allKOResults[slot.id]||null;
-    var pts=winner&&realWinner?calcKOPts(winner,realWinner,'R32'):null;
+    var mid32=KO_ID_MAP[slot.id];
+    var realWinner=mid32?allResults[mid32]:null;
+    var pts=calcKOPts(winner,realWinner,'R32');
     html+=renderKOCard(slot.id,homeTeam,awayTeam,winner,realWinner,pts,'R32');
   }
   html+='</div>';
@@ -1535,7 +1536,8 @@ function renderKnockout(){
       var homeTeam=getKOWinnerTeam(slot.from[0])||('Gan. '+slot.from[0]);
       var awayTeam=getKOWinnerTeam(slot.from[1])||('Gan. '+slot.from[1]);
       var winner=myKO[slot.id]||null;
-      var realWinner=allKOResults[slot.id]||null;
+      var mid16=KO_ID_MAP[slot.id];
+      var realWinner=mid16?allResults[mid16]:null;
       var pts=calcKOPts(winner,realWinner,'R16');
       html+=renderKOCard(slot.id,homeTeam,awayTeam,winner,realWinner,pts,'R16');
     }
@@ -1554,7 +1556,8 @@ function renderKnockout(){
       var homeTeam=getKOWinnerTeam(slot.from[0])||('Gan. '+slot.from[0]);
       var awayTeam=getKOWinnerTeam(slot.from[1])||('Gan. '+slot.from[1]);
       var winner=myKO[slot.id]||null;
-      var realWinner=allKOResults[slot.id]||null;
+      var midqf=KO_ID_MAP[slot.id];
+      var realWinner=midqf?allResults[midqf]:null;
       var pts=calcKOPts(winner,realWinner,'QF');
       html+=renderKOCard(slot.id,homeTeam,awayTeam,winner,realWinner,pts,'QF');
     }
@@ -1573,7 +1576,8 @@ function renderKnockout(){
       var homeTeam=getKOWinnerTeam(slot.from[0])||('Gan. '+slot.from[0]);
       var awayTeam=getKOWinnerTeam(slot.from[1])||('Gan. '+slot.from[1]);
       var winner=myKO[slot.id]||null;
-      var realWinner=allKOResults[slot.id]||null;
+      var midsf=KO_ID_MAP[slot.id];
+      var realWinner=midsf?allResults[midsf]:null;
       var pts=calcKOPts(winner,realWinner,'SF');
       html+=renderKOCard(slot.id,homeTeam,awayTeam,winner,realWinner,pts,'SF');
     }
@@ -1598,11 +1602,11 @@ function renderKnockout(){
 
     html+='<div class="ko-grid">';
     var w3=myKO['3RD']||null;
-    var r3=allKOResults['3RD']||null;
+    var r3=KO_ID_MAP['3RD']?allResults[KO_ID_MAP['3RD']]:null;
     var p3=calcKOPts(w3,r3,'FIN');
     html+=renderKOCard('3RD',sf1loser,sf2loser,w3,r3,p3,'FIN','3er Lugar');
     var wf=myKO['FIN']||null;
-    var rf=allKOResults['FIN']||null;
+    var rf=KO_ID_MAP['FIN']?allResults[KO_ID_MAP['FIN']]:null;
     var pf=calcKOPts(wf,rf,'FIN');
     html+=renderKOCard('FIN',sf1winner,sf2winner,wf,rf,pf,'FIN','FINAL &#x1F3C6;');
     html+='</div>';
@@ -1616,6 +1620,28 @@ function checkPhaseDone(slotIds){
   return true;
 }
 
+
+// ── BD LOCKS para KO ──────────────────────────────────────────────────────────
+var bdLocks={};
+async function loadBDLocksKO(){
+  var r=await sb('GET','match_locks?match_id=gte.9001&match_id=lte.9040&select=match_id,locked');
+  bdLocks={};
+  if(r.ok&&r.data) r.data.forEach(function(l){bdLocks[parseInt(l.match_id)]=l.locked;});
+}
+async function toggleBDLockKO(mid,btn){
+  var newLock=!bdLocks[mid];
+  btn.disabled=true;btn.textContent='...';
+  var r=await sb('PATCH','match_locks?match_id=eq.'+mid,{locked:newLock,locked_at:newLock?new Date().toISOString():null});
+  if(!r.ok){
+    var ins=await sb('POST','match_locks',{match_id:mid,locked:newLock});
+  }
+  bdLocks[mid]=newLock;
+  btn.textContent=newLock?'🔓 Abrir':'🔒 Cerrar';
+  btn.style.background=newLock?'var(--red)':'var(--green)';
+  btn.disabled=false;
+  showToast(newLock?'Partido bloqueado':'Partido abierto','ok');
+  renderKnockout();
+}
 var KO_ID_MAP={
   R32_01:9001,R32_02:9002,R32_03:9003,R32_04:9004,R32_05:9005,R32_06:9006,
   R32_07:9007,R32_08:9008,R32_09:9009,R32_10:9010,R32_11:9011,R32_12:9012,
@@ -1633,7 +1659,7 @@ function renderKOCard(slotId,homeTeam,awayTeam,winner,realWinner,pts,phase,label
   var allSlots=[].concat(R32_SLOTS,R16_SLOTS,QF_SLOTS,SF_SLOTS,FINAL_SLOTS);
   var slotIdx=-1;for(var i=0;i<allSlots.length;i++){if(allSlots[i].id===slotId){slotIdx=i;break;}}
   var koMid=8000+slotIdx+1;
-  var locked=!!(manualLocks[koMid]&&!forceOpen[koMid]);
+  var locked=!!(bdLocks&&bdLocks[KO_ID_MAP[slotId]]);
   var phaseLabel=label||phase;
   var hs=pred?pred.home_score:'';
   var as_val=pred?pred.away_score:'';
@@ -2117,6 +2143,7 @@ function renderAdminLockPanel(){
     html+='</div>';
   }
   // ── Fase Final ──
+  // ── Fase Final — usa match_locks con match_id del KO_ID_MAP ──
   var allSlots=[].concat(R32_SLOTS,R16_SLOTS,QF_SLOTS,SF_SLOTS,FINAL_SLOTS);
   var phaseNames={R32:'32avos de Final',R16:'16avos de Final',QF:'Cuartos de Final',SF:'Semifinales',FIN:'Final / 3er Lugar'};
   var curPhase='';
@@ -2124,31 +2151,17 @@ function renderAdminLockPanel(){
     var slot=allSlots[si];
     var phase=getPhaseFromSlot(slot.id);
     if(phase!==curPhase){
+      if(curPhase!=='') html+='</div>';
       curPhase=phase;
       html+='<div style="margin-bottom:10px;margin-top:14px"><div style="color:var(--accent);font-size:12px;font-weight:700;margin-bottom:6px">'+phaseNames[phase]+'</div>';
     }
-    var koMid=8000+si+1; // match_id para lock de KO
-    var home=slot.home||(koResHome(slot));
-    var away=slot.away||(koResAway(slot));
-    var manLockKO=!!manualLocks[koMid];
-    var fOpenKO=!!forceOpen[koMid];
-    var stateHtmlKO='';
-    if(fOpenKO) stateHtmlKO='<span style="color:var(--green);font-size:11px;font-weight:700">🔓 Abierto</span>';
-    else if(manLockKO) stateHtmlKO='<span style="color:var(--red);font-size:11px;font-weight:700">🔒 Bloqueado</span>';
-    else stateHtmlKO='<span style="color:var(--green);font-size:11px">🔓 Abierto</span>';
-    var btnsKO='';
-    if(fOpenKO){
-      btnsKO='<button onclick="setLockState('+koMid+',0)" style="background:rgba(90,112,128,.2);border:1px solid var(--muted);color:var(--muted);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:11px">Quitar override</button>';
-      btnsKO+='<button onclick="setLockState('+koMid+',1)" style="background:rgba(255,61,107,.15);border:1px solid var(--red);color:var(--red);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:11px;margin-left:4px">🔒 Bloquear</button>';
-    } else if(manLockKO){
-      btnsKO='<button onclick="setLockState('+koMid+',0)" style="background:rgba(90,112,128,.2);border:1px solid var(--muted);color:var(--muted);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:11px">Quitar lock</button>';
-      btnsKO+='<button onclick="setLockState('+koMid+',2)" style="background:rgba(0,230,118,.1);border:1px solid var(--green);color:var(--green);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:11px;margin-left:4px">🔓 Abrir</button>';
-    } else {
-      btnsKO='<button onclick="setLockState('+koMid+',1)" style="background:rgba(255,61,107,.15);border:1px solid var(--red);color:var(--red);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:11px">🔒 Bloquear</button>';
-    }
+    var koMatchId=KO_ID_MAP[slot.id];
+    var home=slot.home||(allKOResults[slot.from&&slot.from[0]]||('Gan. '+(slot.from&&slot.from[0])||'?'));
+    var away=slot.away||(allKOResults[slot.from&&slot.from[1]]||('Gan. '+(slot.from&&slot.from[1])||'?'));
+    var isLocked=!!(bdLocks[koMatchId]);
     html+='<div style="display:flex;align-items:center;justify-content:space-between;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:6px;gap:8px;flex-wrap:wrap">'+
       '<span style="font-size:12px;color:var(--text);flex:1">'+home+' vs '+away+'</span>'+
-      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+stateHtmlKO+btnsKO+'</div>'+
+      '<button data-mid="'+koMatchId+'" style="padding:6px 14px;border:none;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;background:'+(isLocked?'var(--red)':'var(--green)')+';color:#fff" onclick="toggleBDLockKO('+koMatchId+',this)">'+(isLocked?'🔓 Abrir':'🔒 Cerrar')+'</button>'+
     '</div>';
   }
   html+='</div>';
