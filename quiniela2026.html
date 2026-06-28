@@ -1376,6 +1376,18 @@ function getTeamForKOSlot(fromSlotId, koWinners, classified){
 var koSaveTimers={};
 function onKOInput(el){
   var slotId=el.dataset.slot;
+  // Si cambiaron los inputs de score, verificar si hay empate para mostrar penales
+  if(el.dataset.side==='h'||el.dataset.side==='a'){
+    var hEl=document.getElementById('koh-'+slotId);
+    var aEl=document.getElementById('koa-'+slotId);
+    if(hEl&&aEl&&hEl.value!==''&&aEl.value!==''){
+      var isDraw=parseInt(hEl.value)===parseInt(aEl.value);
+      // Re-renderizar solo si cambió el estado de empate
+      var penRow=document.getElementById('ko-pen-row-'+slotId);
+      if(!penRow&&isDraw) renderKnockout(); // necesita penales, re-render
+      else if(penRow&&!isDraw) renderKnockout(); // no necesita penales, re-render
+    }
+  }
   clearTimeout(koSaveTimers[slotId]);
   koSaveTimers[slotId]=setTimeout(function(){
     var btn=document.querySelector('.ko-save-btn[data-slot="'+slotId+'"]');
@@ -1607,44 +1619,54 @@ function checkPhaseDone(slotIds){
 function renderKOCard(slotId,homeTeam,awayTeam,winner,realWinner,pts,phase,label){
   var pred=winner||null;
   var res=realWinner||null;
-  var locked=!!(pred&&res);
-  var ptsHtml='';
-  if(pts!==null) ptsHtml=pts>0?'<span class="badge exact">+'+pts+' pts</span>':'<span class="badge wrong">0 pts</span>';
+  // Lock: igual que grupos — viene del lock manual, no de tener resultado
+  var allSlots=[].concat(R32_SLOTS,R16_SLOTS,QF_SLOTS,SF_SLOTS,FINAL_SLOTS);
+  var slotIdx=-1;for(var i=0;i<allSlots.length;i++){if(allSlots[i].id===slotId){slotIdx=i;break;}}
+  var koMid=8000+slotIdx+1;
+  var locked=!!(manualLocks[koMid]&&!forceOpen[koMid]);
   var phaseLabel=label||phase;
   var hs=pred?pred.home_score:'';
   var as_val=pred?pred.away_score:'';
-  var ph=pred?pred.pen_home:'';
-  var pa=pred?pred.pen_away:'';
-  // Mostrar penales si: ya hay empate en el score, o si el resultado real fue empate
-  var isDrawPred=(hs!==''&&as_val!==''&&parseInt(hs)===parseInt(as_val));
+  var ph=pred?(pred.pen_home!==null&&pred.pen_home!==undefined?pred.pen_home:''):'';
+  var pa=pred?(pred.pen_away!==null&&pred.pen_away!==undefined?pred.pen_away:''):'';
+  // Badges como en grupos
+  var badges='';
+  if(locked&&!pred) badges='<span class="badge locked">&#x1F512; Cerrado</span>';
+  if(pred&&!res) badges='<span class="badge saved">Guardado</span>';
+  if(pts!==null&&pts>0) badges='<span class="badge exact">+'+pts+' pts</span>';
+  else if(pts===0&&res) badges='<span class="badge wrong">0 pts</span>';
+  // Mostrar penales si hay empate en predicción o en resultado real
+  var isDrawPred=hs!==''&&as_val!==''&&parseInt(hs)===parseInt(as_val);
   var isDrawReal=res&&parseInt(res.home_score)===parseInt(res.away_score);
-  var showPenPred=isDrawPred&&!locked;
-  var showPenRes=isDrawReal;
-  // Penales del resultado real
-  var resPenStr=res&&isDrawReal?(res.pen_home+'-'+res.pen_away+' pen'):'';
-  return '<div class="ko-card'+(pred?' saved':'')+(locked?' locked':'')+'">'+
-    '<div style="color:var(--muted);font-size:10px;font-weight:700;margin-bottom:8px">'+phaseLabel+'</div>'+
+  var resPenStr=res&&isDrawReal&&res.pen_home!==null?(' (pen '+res.pen_home+'-'+res.pen_away+')'):'';
+  return '<div class="match-card'+(pred?' saved':'')+'">'+
     '<div class="match-teams">'+
       '<div class="match-team">'+ef(homeTeam)+'<span class="team-name">'+homeTeam+'</span></div>'+
-      '<div class="match-vs">VS</div>'+
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:2px">'+
+        '<div class="match-vs">VS</div>'+
+        '<div style="color:var(--muted);font-size:9px;font-weight:600">'+phaseLabel+'</div>'+
+      '</div>'+
       '<div class="match-team away"><span class="team-name">'+awayTeam+'</span>'+ef(awayTeam)+'</div>'+
     '</div>'+
     '<div class="score-row">'+
-      '<input type="number" min="0" max="20" class="score-input ko-input" data-slot="'+slotId+'" data-side="h" value="'+hs+'" placeholder="0" '+(locked?'disabled':'')+' oninput="onKOInput(this)"/>'+
+      '<input type="number" min="0" max="20" class="score-input ko-input" data-slot="'+slotId+'" data-side="h" id="koh-'+slotId+'" value="'+hs+'" placeholder="0" '+(locked?'disabled':'')+' oninput="onKOInput(this)"/>'+
       '<span class="score-dash">-</span>'+
-      '<input type="number" min="0" max="20" class="score-input ko-input" data-slot="'+slotId+'" data-side="a" value="'+as_val+'" placeholder="0" '+(locked?'disabled':'')+' oninput="onKOInput(this)"/>'+
+      '<input type="number" min="0" max="20" class="score-input ko-input" data-slot="'+slotId+'" data-side="a" id="koa-'+slotId+'" value="'+as_val+'" placeholder="0" '+(locked?'disabled':'')+' oninput="onKOInput(this)"/>'+
       (!locked?'<button class="save-btn ko-save-btn" data-slot="'+slotId+'" data-home="'+homeTeam+'" data-away="'+awayTeam+'" onclick="saveKOScore(this)">Guardar</button>':'')+
     '</div>'+
-    // Penales para predicción del usuario
-    (showPenPred?
+    // Penales — aparecen si el usuario puso empate o el resultado fue empate
+    (isDrawPred&&!locked?
       '<div class="score-row" style="margin-top:6px">'+
         '<span style="font-size:10px;color:var(--accent);font-weight:700;margin-right:6px">🥅 Penales:</span>'+
-        '<input type="number" min="0" max="20" class="score-input ko-input" data-slot="'+slotId+'" data-side="ph" value="'+ph+'" placeholder="0" style="width:52px" oninput="onKOInput(this)"/>'+
+        '<input type="number" min="0" max="20" class="score-input ko-input" data-slot="'+slotId+'" data-side="ph" id="koph-'+slotId+'" value="'+ph+'" placeholder="0" style="width:52px" oninput="onKOInput(this)"/>'+
         '<span class="score-dash">-</span>'+
-        '<input type="number" min="0" max="20" class="score-input ko-input" data-slot="'+slotId+'" data-side="pa" value="'+pa+'" placeholder="0" style="width:52px" oninput="onKOInput(this)"/>'+
+        '<input type="number" min="0" max="20" class="score-input ko-input" data-slot="'+slotId+'" data-side="pa" id="kopa-'+slotId+'" value="'+pa+'" placeholder="0" style="width:52px" oninput="onKOInput(this)"/>'+
       '</div>':'')+
-    // Resultado real con penales
-    (res?'<div class="result-row"><span style="color:var(--muted);font-size:11px">Real: '+res.home_score+'-'+res.away_score+(resPenStr?' ('+resPenStr+')':'')+'</span>'+ptsHtml+'</div>':'<div class="result-row">'+ptsHtml+'</div>')+
+    (isDrawPred&&locked&&ph!==''?
+      '<div style="color:var(--muted);font-size:11px;margin-top:4px">🥅 Penales pred: '+ph+'-'+pa+'</div>':'')+
+    (res?
+      '<div class="result-row"><span style="color:var(--muted);font-size:11px">Real: '+res.home_score+'-'+res.away_score+resPenStr+'</span>'+badges+'</div>':
+      '<div class="result-row">'+badges+'</div>')+
   '</div>';
 }
 
