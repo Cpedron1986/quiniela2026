@@ -1951,8 +1951,12 @@ async function saveKOResult(btn){
   }
   var data={match_id:mid,home_score:hs,away_score:as};
   if(pen_home!==null){data.pen_home=pen_home;data.pen_away=pen_away;}
-  var ins=await sb('POST','results',data);
-  if(!ins.ok) await sb('PATCH','results?match_id=eq.'+mid,data);
+  // Upsert: inserta o actualiza según match_id
+  var r=await sbUpsert('results',data,'match_id');
+  if(!r.ok){
+    // Fallback: intentar PATCH directo
+    await sb('PATCH','results?match_id=eq.'+mid,{home_score:hs,away_score:as,pen_home:pen_home,pen_away:pen_away});
+  }
   allResults[mid]=Object.assign({},data);
   // Derivar ganador (con penales si aplica)
   var slots=[].concat(R32_SLOTS,R16_SLOTS,QF_SLOTS,SF_SLOTS,FINAL_SLOTS);
