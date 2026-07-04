@@ -659,7 +659,7 @@ select option{background:#0e1420;}
     <!-- KNOCKOUT -->
     <div id="tab-knockout" class="tab-content">
       <div class="stitle">Fase Final</div>
-      <div class="shint">Completa tus grupos para habilitar cada ronda</div>
+      <div class="shint">Predice todos los partidos de la fase final</div>
       <div id="knockout-content"></div>
     </div>
     <!-- TABLA -->
@@ -1537,71 +1537,53 @@ function renderKnockout(){
   html+='</div>';
 
   // ── ROUND OF 16 ──
-  var r32done=checkPhaseDone(R32_SLOTS.map(function(s){return s.id;}));
   html+='<div class="ko-phase-title">16avos de Final <span class="phase-badge">+'+CRITERIA.r16w+'/+'+CRITERIA.r16e+' pts</span></div>';
-  if(!r32done){
-    html+='<div class="ko-pending">&#x1F512; Completa los 32avos para continuar</div>';
-  } else {
-    html+='<div class="ko-grid">';
-    for(var i=0;i<R16_SLOTS.length;i++){
-      var slot=R16_SLOTS[i];
-      var homeTeam=slot.home; // equipos reales directos
-      var awayTeam=slot.away;
-      var winner=myKO[slot.id]||null;
-      var mid16=KO_ID_MAP[slot.id];
-      var realWinner=mid16?allResults[mid16]:null;
-      var pts=calcKOPts(winner,realWinner,'R16');
-      html+=renderKOCard(slot.id,homeTeam,awayTeam,winner,realWinner,pts,'R16');
-    }
-    html+='</div>';
+  html+='<div class="ko-grid">';
+  for(var i=0;i<R16_SLOTS.length;i++){
+    var slot=R16_SLOTS[i];
+    var homeTeam=slot.home;
+    var awayTeam=slot.away;
+    var winner=myKO[slot.id]||null;
+    var mid16=KO_ID_MAP[slot.id];
+    var realWinner=mid16?allResults[mid16]:null;
+    var pts=calcKOPts(winner,realWinner,'R16');
+    html+=renderKOCard(slot.id,homeTeam,awayTeam,winner,realWinner,pts,'R16');
   }
+  html+='</div>';
 
   // ── QUARTERFINALS ──
-  var r16done=checkPhaseDone(R16_SLOTS.map(function(s){return s.id;}));
   html+='<div class="ko-phase-title">Cuartos de Final <span class="phase-badge">+'+CRITERIA.qfw+'/+'+CRITERIA.qfe+' pts</span></div>';
-  if(!r32done||!r16done){
-    html+='<div class="ko-pending">&#x1F512; Completa los 16avos para continuar</div>';
-  } else {
-    html+='<div class="ko-grid">';
-    for(var i=0;i<QF_SLOTS.length;i++){
-      var slot=QF_SLOTS[i];
-      var homeTeam=getKOWinnerTeam(slot.from[0])||('Gan. '+slot.from[0]);
-      var awayTeam=getKOWinnerTeam(slot.from[1])||('Gan. '+slot.from[1]);
-      var winner=myKO[slot.id]||null;
-      var midqf=KO_ID_MAP[slot.id];
-      var realWinner=midqf?allResults[midqf]:null;
-      var pts=calcKOPts(winner,realWinner,'QF');
-      html+=renderKOCard(slot.id,homeTeam,awayTeam,winner,realWinner,pts,'QF');
-    }
-    html+='</div>';
+  html+='<div class="ko-grid">';
+  for(var i=0;i<QF_SLOTS.length;i++){
+    var slot=QF_SLOTS[i];
+    var homeTeam=getKOWinnerTeam(slot.from[0])||('Gan. '+slot.from[0]);
+    var awayTeam=getKOWinnerTeam(slot.from[1])||('Gan. '+slot.from[1]);
+    var winner=myKO[slot.id]||null;
+    var midqf=KO_ID_MAP[slot.id];
+    var realWinner=midqf?allResults[midqf]:null;
+    var pts=calcKOPts(winner,realWinner,'QF');
+    html+=renderKOCard(slot.id,homeTeam,awayTeam,winner,realWinner,pts,'QF');
   }
+  html+='</div>';
 
   // ── SEMIFINALS ──
-  var qfdone=checkPhaseDone(QF_SLOTS.map(function(s){return s.id;}));
   html+='<div class="ko-phase-title">Semifinales <span class="phase-badge">+'+CRITERIA.sfw+'/+'+CRITERIA.sfe+' pts</span></div>';
-  if(!r32done||!r16done||!qfdone){
-    html+='<div class="ko-pending">&#x1F512; Completa los Cuartos para continuar</div>';
-  } else {
-    html+='<div class="ko-grid">';
-    for(var i=0;i<SF_SLOTS.length;i++){
-      var slot=SF_SLOTS[i];
-      var homeTeam=getKOWinnerTeam(slot.from[0])||('Gan. '+slot.from[0]);
-      var awayTeam=getKOWinnerTeam(slot.from[1])||('Gan. '+slot.from[1]);
-      var winner=myKO[slot.id]||null;
-      var midsf=KO_ID_MAP[slot.id];
-      var realWinner=midsf?allResults[midsf]:null;
-      var pts=calcKOPts(winner,realWinner,'SF');
-      html+=renderKOCard(slot.id,homeTeam,awayTeam,winner,realWinner,pts,'SF');
-    }
-    html+='</div>';
+  html+='<div class="ko-grid">';
+  for(var i=0;i<SF_SLOTS.length;i++){
+    var slot=SF_SLOTS[i];
+    var homeTeam=getKOWinnerTeam(slot.from[0])||('Gan. '+slot.from[0]);
+    var awayTeam=getKOWinnerTeam(slot.from[1])||('Gan. '+slot.from[1]);
+    var winner=myKO[slot.id]||null;
+    var midsf=KO_ID_MAP[slot.id];
+    var realWinner=midsf?allResults[midsf]:null;
+    var pts=calcKOPts(winner,realWinner,'SF');
+    html+=renderKOCard(slot.id,homeTeam,awayTeam,winner,realWinner,pts,'SF');
   }
+  html+='</div>';
 
   // ── FINAL + 3RD PLACE ──
-  var sfdone=checkPhaseDone(SF_SLOTS.map(function(s){return s.id;}));
   html+='<div class="ko-phase-title">3er Lugar y Final <span class="phase-badge">+'+CRITERIA.fiw+'/+'+CRITERIA.fie+' pts</span></div>';
-  if(!r32done||!r16done||!qfdone||!sfdone){
-    html+='<div class="ko-pending">&#x1F512; Completa las Semis para continuar</div>';
-  } else {
+  {
     // 3rd place: losers of semis
     var sf1h=getKOWinnerTeam(SF_SLOTS[0].from[0])||'Gan.'+SF_SLOTS[0].from[0];
     var sf1a=getKOWinnerTeam(SF_SLOTS[0].from[1])||'Gan.'+SF_SLOTS[0].from[1];
