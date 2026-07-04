@@ -970,14 +970,14 @@ var R32_SLOTS=[
 
 // R16 bracket (winners of R32 pairs)
 var R16_SLOTS=[
-  {id:"R16_01",from:["R32_01","R32_02"]},
-  {id:"R16_02",from:["R32_03","R32_04"]},
-  {id:"R16_03",from:["R32_05","R32_06"]},
-  {id:"R16_04",from:["R32_07","R32_08"]},
-  {id:"R16_05",from:["R32_09","R32_10"]},
-  {id:"R16_06",from:["R32_11","R32_12"]},
-  {id:"R16_07",from:["R32_13","R32_14"]},
-  {id:"R16_08",from:["R32_15","R32_16"]}
+  {id:"R16_01",home:"Canada",      away:"Marruecos"},    // Jul 4 - Houston
+  {id:"R16_02",home:"Francia",     away:"Paraguay"},     // Jul 4 - Philadelphia
+  {id:"R16_03",home:"Brasil",      away:"Noruega"},      // Jul 5 - Nueva York
+  {id:"R16_04",home:"Mexico",      away:"Inglaterra"},   // Jul 5 - Mexico City
+  {id:"R16_05",home:"Espana",      away:"Portugal"},     // Jul 6 - Dallas
+  {id:"R16_06",home:"Belgica",     away:"Estados Unidos"},// Jul 6 - Seattle
+  {id:"R16_07",home:"Argentina",   away:"Egipto"},       // Jul 7 - Atlanta
+  {id:"R16_08",home:"Suiza",       away:"Colombia"}      // Jul 7 - Vancouver
 ];
 
 var QF_SLOTS=[
@@ -1475,12 +1475,12 @@ function getKOWinnerTeam(slotId){
   var allSlots=[].concat(R32_SLOTS,R16_SLOTS,QF_SLOTS,SF_SLOTS,FINAL_SLOTS);
   for(var i=0;i<allSlots.length;i++){if(allSlots[i].id===slotId){slot=allSlots[i];break;}}
   if(!slot) return null;
-  var home=slot.home||(getKOWinnerTeam(slot.from[0])||('Gan.'+slot.from[0]));
-  var away=slot.away||(getKOWinnerTeam(slot.from[1])||('Gan.'+slot.from[1]));
+  // home/away directo si es string (R32, R16)
+  var home=typeof slot.home==='string'?slot.home:(getKOWinnerTeam(slot.from[0])||('Gan.'+slot.from[0]));
+  var away=typeof slot.away==='string'?slot.away:(getKOWinnerTeam(slot.from[1])||('Gan.'+slot.from[1]));
   var hs=parseInt(pred.home_score),as=parseInt(pred.away_score);
   if(hs>as) return home;
   if(as>hs) return away;
-  // Empate — usar penales
   var ph=parseInt(pred.pen_home||0),pa=parseInt(pred.pen_away||0);
   if(ph>pa) return home;
   if(pa>ph) return away;
@@ -1545,8 +1545,8 @@ function renderKnockout(){
     html+='<div class="ko-grid">';
     for(var i=0;i<R16_SLOTS.length;i++){
       var slot=R16_SLOTS[i];
-      var homeTeam=getKOWinnerTeam(slot.from[0])||('Gan. '+slot.from[0]);
-      var awayTeam=getKOWinnerTeam(slot.from[1])||('Gan. '+slot.from[1]);
+      var homeTeam=slot.home; // equipos reales directos
+      var awayTeam=slot.away;
       var winner=myKO[slot.id]||null;
       var mid16=KO_ID_MAP[slot.id];
       var realWinner=mid16?allResults[mid16]:null;
@@ -1706,9 +1706,9 @@ function renderKOCard(slotId,homeTeam,awayTeam,winner,realWinner,pts,phase,label
     (isDrawPred&&!locked?
       '<div class="score-row" style="margin-top:6px">'+
         '<span style="font-size:10px;color:var(--accent);font-weight:700;margin-right:6px">🥅 Penales:</span>'+
-        '<input type="number" min="0" max="20" class="score-input ko-input" data-slot="'+slotId+'" data-side="ph" id="koph-'+slotId+'" value="'+ph+'" placeholder="0" style="width:52px" oninput="onKOInput(this)"/>'+
+        '<input type="number" min="0" max="20" class="score-input ko-input" data-slot="'+slotId+'" data-side="ph" id="koph-'+slotId+'" value="'+ph+'" placeholder="0" style="width:52px"/>'+
         '<span class="score-dash">-</span>'+
-        '<input type="number" min="0" max="20" class="score-input ko-input" data-slot="'+slotId+'" data-side="pa" id="kopa-'+slotId+'" value="'+pa+'" placeholder="0" style="width:52px" oninput="onKOInput(this)"/>'+
+        '<input type="number" min="0" max="20" class="score-input ko-input" data-slot="'+slotId+'" data-side="pa" id="kopa-'+slotId+'" value="'+pa+'" placeholder="0" style="width:52px"/>'+
       '</div>':'')+
     (isDrawPred&&locked&&ph!==''?
       '<div style="color:var(--muted);font-size:11px;margin-top:4px">🥅 Penales pred: '+ph+'-'+pa+'</div>':'')+
@@ -1883,16 +1883,16 @@ function getKOSlots(fase){
   if(fase==='FIN') return FINAL_SLOTS;return [];
 }
 function koResHome(slot){
-  // R32: home es string directo (equipo real)
-  if(typeof slot.home==='string') return slot.home;
-  // R16+: viene del ganador del slot anterior
+  // R32 y R16: home es string directo (equipo real)
+  if(slot.home&&typeof slot.home==='string') return slot.home;
+  // QF+: viene del ganador del slot anterior
   if(slot.from) return allKOResults[slot.from[0]]||('Gan. '+slot.from[0]);
   return '?';
 }
 function koResAway(slot){
-  // R32: away es string directo (equipo real)
-  if(typeof slot.away==='string') return slot.away;
-  // R16+: viene del ganador del slot anterior
+  // R32 y R16: away es string directo (equipo real)
+  if(slot.away&&typeof slot.away==='string') return slot.away;
+  // QF+: viene del ganador del slot anterior
   if(slot.from) return allKOResults[slot.from[1]]||('Gan. '+slot.from[1]);
   return '?';
 }
